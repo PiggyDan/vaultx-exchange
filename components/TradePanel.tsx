@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PAIRS, QUOTE, START_QUOTE_BALANCE, fmtNum, type PairConfig } from "@/lib/pairs";
 import { api, type OrderView, type Portfolio } from "@/hooks/usePortfolio";
+import CoinIcon from "@/components/CoinIcon";
 
 type Side = "BUY" | "SELL";
 type OrderType = "LIMIT" | "MARKET";
@@ -71,13 +72,16 @@ function OrderRow({ o, onCancel }: { o: OrderView; onCancel?: () => void }) {
   const px = o.fillPrice ?? o.price ?? 0;
   return (
     <div className="flex items-center justify-between border-b border-[#2B3139] py-2 text-xs last:border-0">
-      <div className="flex flex-col">
+      <div className="flex items-center gap-2">
+        <CoinIcon base={o.base} size={18} />
+        <div className="flex flex-col">
         <span className={o.side === "BUY" ? "text-[#0ECB81]" : "text-[#F6465D]"}>
           {o.side} {o.base} · {o.type.toLowerCase()}
         </span>
         <span className="font-mono text-[#848E9C]">
           {fmtNum(o.amount, p.amountDecimals)} @ {fmtNum(px, p.priceDecimals)}
         </span>
+        </div>
       </div>
       {onCancel ? (
         <button onClick={onCancel} className="text-[#848E9C] hover:text-[#F0B90B]">
@@ -332,7 +336,10 @@ export default function TradePanel({
                   const qty = (b?.free ?? 0) + (b?.locked ?? 0);
                   return (
                     <div key={asset} className="flex justify-between" title={b?.locked ? `${fmtNum(b.locked, p ? p.amountDecimals : 2)} locked in orders` : undefined}>
-                      <span className={asset === base ? "font-semibold text-[#F0B90B]" : "text-[#848E9C]"}>{asset}</span>
+                      <span className={`flex items-center gap-1.5 ${asset === base ? "font-semibold text-[#F0B90B]" : "text-[#848E9C]"}`}>
+                        <CoinIcon base={asset} size={13} />
+                        {asset}
+                      </span>
                       <span className="font-mono tabular-nums text-[#EAECEF]">
                         {fmtNum(qty, p ? p.amountDecimals : 2)}
                         {b?.locked ? <span className="text-[#F0B90B]">*</span> : null}

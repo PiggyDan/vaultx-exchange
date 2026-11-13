@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, Float, Lightformer, OrbitControls, Sparkles } from "@react-three/drei";
 import * as THREE from "three";
@@ -10,32 +10,67 @@ const GOLD = "#F0B90B";
 const GREEN = "#0ECB81";
 const RED = "#F6465D";
 
-function hexPoints(r: number) {
-  return Array.from({ length: 6 }, (_, i) => {
-    const a = Math.PI / 6 + (i * Math.PI) / 3;
-    return new THREE.Vector2(Math.cos(a) * r, Math.sin(a) * r);
-  });
+/**
+ * Rasterises a coin's "white" logo (a white disc with the glyph cut out) at high resolution and
+ * inverts it, leaving just the glyph on a transparent background. Used as an inlay on the coin face.
+ */
+function useGlyphTexture(url: string) {
+  const [texture, setTexture] = useState<THREE.CanvasTexture | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    let created: THREE.CanvasTexture | null = null;
+    let blobUrl = "";
+    const S = 1024;
+    const img = new Image();
+    img.onload = () => {
+      if (!alive) return;
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = S;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(S / 2, S / 2, (S / 2) * 0.96, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalCompositeOperation = "destination-out"; // erase the disc, keep the cut-out glyph
+      ctx.drawImage(img, 0, 0, S, S);
+      created = new THREE.CanvasTexture(canvas);
+      created.colorSpace = THREE.SRGBColorSpace;
+      created.anisotropy = 8;
+      setTexture(created);
+    };
+    // Give the SVG an explicit size: some browsers (Firefox) won't draw size-less SVGs to canvas.
+    fetch(url)
+      .then((r) => r.text())
+      .then((svg) => {
+        if (!alive) return;
+        const sized = svg.replace("<svg ", `<svg width="${S}" height="${S}" `);
+        blobUrl = URL.createObjectURL(new Blob([sized], { type: "image/svg+xml" }));
+        img.src = blobUrl;
+      })
+      .catch(() => {
+        /* no logo: coin renders without the inlay */
+      });
+    return () => {
+      alive = false;
+      created?.dispose();
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [url]);
+
+  return texture;
 }
 
-function Emblem({ direction, price, color }: { direction: PriceDirection; price: number; color: string }) {
+function Emblem({ direction, price, color, logo }: { direction: PriceDirection; price: number; color: string; logo: string }) {
   const group = useRef<THREE.Group>(null);
   const spin = useRef(0.6);
+  const glyph = useGlyphTexture(logo);
 
-  const { hexGeo, notches, mats } = useMemo(() => {
+  const { notches, mats, bright } = useMemo(() => {
     const tint = new THREE.Color(color);
-    const deep = tint.clone().multiplyScalar(0.78);
-    const bright = tint.clone().lerp(new THREE.Color("#ffffff"), 0.28);
-    const outer = new THREE.Shape(hexPoints(0.72));
-    outer.holes.push(new THREE.Path(hexPoints(0.42)));
-    const geo = new THREE.ExtrudeGeometry(outer, {
-      depth: 0.08,
-      bevelEnabled: true,
-      bevelThickness: 0.03,
-      bevelSize: 0.03,
-      bevelSegments: 4,
-      curveSegments: 1,
-    });
-    geo.center();
+    const deep = tint.clone().multiplyScalar(0.62);
+    const bright = tint.clone().lerp(new THREE.Color("#ffffff"), 0.45);
 
     const notches = Array.from({ length: 24 }, (_, i) => {
       const a = (i / 24) * Math.PI * 2;
@@ -47,16 +82,10 @@ function Emblem({ direction, price, color }: { direction: PriceDirection; price:
       gold: new THREE.MeshStandardMaterial({ color: tint, metalness: 1, roughness: 0.18, envMapIntensity: 1.4 }),
       polished: new THREE.MeshStandardMaterial({ color: bright, metalness: 1, roughness: 0.08, envMapIntensity: 1.8 }),
     };
-    return { hexGeo: geo, notches, mats };
+    return { notches, mats, bright };
   }, [color]);
 
-  useEffect(
-    () => () => {
-      hexGeo.dispose();
-      Object.values(mats).forEach((m) => m.dispose());
-    },
-    [hexGeo, mats],
-  );
+  useEffect(() => () => Object.values(mats).forEach((m) => m.dispose()), [mats]);
 
   useEffect(() => {
     if (price > 0) spin.current = Math.max(spin.current, 1.8);
@@ -85,10 +114,23 @@ function Emblem({ direction, price, color }: { direction: PriceDirection; price:
           <mesh material={mats.gold}>
             <torusGeometry args={[1.28, 0.035, 16, 128]} />
           </mesh>
-          <mesh geometry={hexGeo} material={mats.polished} position={[0, 0, 0.05]} castShadow />
-          <mesh material={mats.polished} position={[0, 0, 0.06]} rotation={[0, 0, Math.PI / 4]} castShadow>
-            <boxGeometry args={[0.3, 0.3, 0.14]} />
-          </mesh>
+          {glyph && (
+            <mesh position={[0, 0, 0.004]}>
+              <circleGeometry args={[1.2, 96]} />
+              <meshStandardMaterial
+                key={glyph.uuid}
+                map={glyph}
+                color={bright}
+                metalness={1}
+                roughness={0.1}
+                envMapIntensity={2}
+                transparent
+                alphaTest={0.4}
+                polygonOffset
+                polygonOffsetFactor={-2}
+              />
+            </mesh>
+          )}
           {notches.map((n, i) => (
             <mesh key={i} material={mats.gold} position={n.pos} rotation={[0, 0, n.rot]}>
               <boxGeometry args={[0.13, 0.05, 0.05]} />
@@ -136,7 +178,7 @@ export default function CryptoScene3D({
 
         <Suspense fallback={null}>
           <Float speed={1.6} rotationIntensity={0.25} floatIntensity={0.6}>
-            <Emblem direction={direction} price={price} color={color} />
+            <Emblem direction={direction} price={price} color={color} logo={`/coins/white/${label.toLowerCase()}.svg`} />
           </Float>
           <Sparkles count={70} scale={[7, 4.5, 4]} size={2.2} speed={0.35} color={color} opacity={0.8} />
           <Sparkles count={30} scale={[6, 4, 3]} size={3} speed={0.6} color={accent} opacity={0.6} />

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import BrandLink from "@/components/BrandLink";
 import { api, usePortfolio } from "@/hooks/usePortfolio";
 import { START_QUOTE_BALANCE, fmtNum } from "@/lib/pairs";
 
@@ -41,9 +42,7 @@ export default function LeaderboardPage() {
   return (
     <div className="min-h-screen w-full bg-[#0B0E11] text-[#EAECEF]">
       <header className="flex h-14 items-center justify-between border-b border-[#2B3139] bg-[#181A20] px-4">
-        <Link href="/" className="text-lg font-bold tracking-tight text-[#F0B90B]">
-          VaultX
-        </Link>
+        <BrandLink />
         <Link href="/" className="text-sm text-[#B7BDC6] hover:text-[#F0B90B]">
           ← Back to trading
         </Link>

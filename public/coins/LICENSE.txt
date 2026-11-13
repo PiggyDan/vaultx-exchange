@@ -1,0 +1,3 @@
+Coin logos from cryptocurrency-icons v0.18.1 (CC0-1.0)
+https://github.com/spothq/cryptocurrency-icons
+Logos are trademarks of their respective projects, used here only to identify each asset.

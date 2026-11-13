@@ -8,6 +8,8 @@ import { useFxRates } from "@/hooks/useFxRates";
 import { api, usePortfolio } from "@/hooks/usePortfolio";
 import Link from "next/link";
 import AuthDialog, { type AuthMode } from "@/components/AuthDialog";
+import CoinIcon from "@/components/CoinIcon";
+import BrandLink from "@/components/BrandLink";
 import { PAIRS, fmtNum, getPair } from "@/lib/pairs";
 import { FIATS, fmtFiat, getFiat } from "@/lib/currencies";
 import OrderBook from "@/components/OrderBook";
@@ -37,14 +39,6 @@ function Stat({ label, value, className = "" }: { label: string; value: string; 
   );
 }
 
-function Logo() {
-  return (
-    <svg viewBox="0 0 32 32" className="h-7 w-7" aria-hidden>
-      <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="none" stroke="#F0B90B" strokeWidth="2.5" />
-      <rect x="12" y="12" width="8" height="8" transform="rotate(45 16 16)" fill="#F0B90B" />
-    </svg>
-  );
-}
 
 export default function Page() {
   const [symbol, setSymbol] = useState(PAIRS[0].symbol);
@@ -130,16 +124,13 @@ export default function Page() {
     <div className="min-h-screen w-full bg-[#0B0E11] text-[#EAECEF] antialiased">
       <header className="sticky top-0 z-40 border-b border-[#2B3139] bg-[#181A20]/95 backdrop-blur">
         <div className="flex h-14 items-center gap-6 px-4">
-          <div className="flex items-center gap-2">
-            <Logo />
-            <span className="text-lg font-bold tracking-tight text-[#F0B90B]">VaultX</span>
-          </div>
+          <BrandLink />
 
           <div className="hidden h-8 w-px bg-[#2B3139] md:block" />
 
           <div className="flex min-w-0 flex-1 items-center gap-6 overflow-x-auto">
             <div className="flex shrink-0 items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: pair.color }} />
+              <CoinIcon base={pair.base} size={26} />
               <div className="flex flex-col">
                 <span className="text-sm font-semibold">
                   {pair.base}/{pair.quote}
@@ -233,7 +224,7 @@ export default function Page() {
                   active ? "bg-[#2B3139]" : "hover:bg-[#1E2329]"
                 }`}
               >
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: p.color }} />
+                <CoinIcon base={p.base} size={16} />
                 <span className={`font-semibold ${active ? "text-[#F0B90B]" : "text-[#EAECEF]"}`}>{p.base}</span>
                 <span className="font-mono tabular-nums text-[#B7BDC6]">{m ? formatFiat(m.price) : "—"}</span>
                 <span className={`font-mono tabular-nums ${chg >= 0 ? "text-[#0ECB81]" : "text-[#F6465D]"}`}>
