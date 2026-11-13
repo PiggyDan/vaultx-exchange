@@ -4,7 +4,7 @@ A full-stack, exchange-style trading app with **live Binance market data**, a **
 
 > **Paper trading only.** No real money, deposits or withdrawals. Every account starts with 25,000 USDT of virtual funds.
 
-**Live demo:** _coming soon_
+**Live demo:** https://vaultx-exchange.vercel.app
 
 ---
 
