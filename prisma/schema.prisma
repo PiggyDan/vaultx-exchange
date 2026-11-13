@@ -1,0 +1,68 @@
+// VaultX — paper-trading exchange schema.
+// Money is stored as Decimal (never float). Quantities: 18 integer + 10 fractional digits.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled connection (app)
+  directUrl = env("DATABASE_URL_UNPOOLED") // direct connection (migrations)
+}
+
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  balances     Balance[]
+  orders       Order[]
+}
+
+/// One row per (user, asset). `free` is spendable; `locked` is reserved by open limit orders.
+model Balance {
+  userId String
+  asset  String
+  free   Decimal @default(0) @db.Decimal(28, 10)
+  locked Decimal @default(0) @db.Decimal(28, 10)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, asset])
+}
+
+enum Side {
+  BUY
+  SELL
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+}
+
+enum OrderStatus {
+  OPEN
+  FILLED
+  CANCELLED
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String
+  symbol    String // e.g. BTCUSDT
+  base      String // e.g. BTC
+  quote     String // e.g. USDT
+  side      Side
+  type      OrderType
+  price     Decimal?    @db.Decimal(28, 10) // limit price; null for market orders
+  amount    Decimal     @db.Decimal(28, 10) // base-asset quantity
+  fillPrice Decimal?    @db.Decimal(28, 10)
+  status    OrderStatus @default(OPEN)
+  createdAt DateTime    @default(now())
+  filledAt  DateTime?
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, symbol])
+  @@index([userId, createdAt])
+}
